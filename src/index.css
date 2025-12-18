@@ -1,0 +1,79 @@
+/* ===== CSS VARIABLES - Change colors, fonts, and sizes here ===== */
+:root {
+  --tinyurl-blue: #2563eb;      /* Main blue color – header, buttons – change here */
+  --widget-bg: rgba(30, 41, 59, 0.6); /* Glass widget background – change here */
+  --text-white: #e2e8f0;         /* Main text color – change here */
+  --input-bg: #ffffff;          /* Input background – change here */
+  --input-text: #1e293b;        /* Input text color – change here */
+  
+  /* *Font Size Control – Controlled by the dropdown in ControlsBar.jsx* 
+     Small  → content 11px / widget headers 13px 
+     Medium → content 13px / widget headers 15px 
+     Big    → content 15px / widget headers 18px 
+     Change these values here if you ever want different sizes */
+  --font-base: 13px;            /* Base font size for all page content – updated by font selector */
+  --header-font: 15px;          /* Font size for all widget <h2> titles – updated by font selector */
+  
+  --teal: #14b8a6;              /* Teal accent – change here */
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  /* Font size now fully controlled by --font-base (set by ControlsBar) */
+  font-size: var(--font-base);
+  line-height: 1.6;
+  color: var(--text-white);
+  background-color: #020410;
+  overflow-x: hidden;
+}
+
+body {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* *Widget Header Styling – Keep same look across all sizes* 
+   This controls the <h2> titles inside widgets.
+   Font size is tied to --header-font (updated by the font selector).
+   Color (#60a5fa) and other styles stay exactly the same. */
+.widget h2 {
+  margin: 0 0 16px;
+  color: #60a5fa;               /* Widget title color – change here if needed */
+  border-bottom: 2px solid #60a5fa;
+  padding-bottom: 12px;
+  font-size: var(--header-font); /* ← Controlled by font selector (13px / 15px / 18px) */
+  text-align: center;
+  font-weight: normal;          /* Keep regular weight like original design */
+}
+
+/* *Widget Content Margin Reduction* 
+   Original padding was higher – reduced inner content margin by 2px as requested.
+   Change the padding values here if you want to adjust further. */
+.widget {
+  background: var(--widget-bg);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 16px;
+  padding: 19px 17px;           /* ← Reduced by 2px from original (21px 19px) */
+  box-shadow: 0 10px 40px rgba(0,0,0,0.7);
+  margin-bottom: 20px;
+  position: relative;
+  border: 1px solid rgba(96,165,250,0.1);
+}
+
+/* *Responsive – sidebar stacks on small screens* */
+@media (max-width: 1100px) {
+  .page-container { 
+    flex-direction: column; 
+    padding: 0 16px; 
+    gap: 20px; 
+  }
+  .sidebar { 
+    width: 100%; 
+  }
+}
