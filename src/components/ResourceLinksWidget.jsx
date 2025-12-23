@@ -1,76 +1,72 @@
 // *Resource Links Widget Block*
-// NOTE: Using only fallback sample data (no API imports needed)
-// When ready for real search, add tokens and let me know – I'll re-enable live search
 
 import { useState } from 'react'
 
 export default function ResourceLinksWidget() {
-  const [activeMode, setActiveMode] = useState('figma')  // 'figma', 'confluence', 'drive'
+  // Renamed from activeMode to activePlatform for clarity
+  const [activePlatform, setActivePlatform] = useState('drive') // Default to drive, as only drive is hooked up
   const [searchQuery, setSearchQuery] = useState('')
-  const [searchResults, setSearchResults] = useState([])
+  const [searchResults, setSearchResults] = useState([]) // Will store live results
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [page, setPage] = useState(1)
   const resultsPerPage = 5
 
-  // >>> PLACEHOLDER FOR API TOKENS <<<
-  // Add your real tokens here later when ready
-  const FIGMA_TOKEN = 'YOUR-FIGMA-TOKEN-HERE'          // Figma personal access token – add later
-  const CONFLUENCE_TOKEN = 'YOUR-CONFLUENCE-TOKEN-HERE' // Confluence API token – add later
-  const DRIVE_ACCESS_TOKEN = 'YOUR-DRIVE-ACCESS-TOKEN-HERE' // Google OAuth access token – add later
+  // >>> API Configuration <<<
+  // Use the SAME URL from your OutOfOfficeWidget.jsx file
+  const APPS_SCRIPT_URL = 'https://script.google.com/a/macros/tinyurl.com/s/AKfycbwvHxAOpI9RCW9m6-dPCLUaix_3o4qcO4bCSaZsXh97yyBbqNHuWNISpwBk4alvwErt8w/exec';
 
-  // 12 Fallback sample results – always shows until real APIs added
-  const fallbackResults = [
-    { name: 'Q4 Campaign Brief.fig', link: '#', type: 'figma' },
-    { name: 'Mobile App Redesign.fig', link: '#', type: 'figma' },
-    { name: 'Brand Assets Folder', link: '#', type: 'drive' },
-    { name: 'Sprint Planning 2025', link: '#', type: 'confluence' },
-    { name: 'Onboarding Guide v2', link: '#', type: 'confluence' },
-    { name: 'Marketing Assets 2025', link: '#', type: 'drive' },
-    { name: 'Dashboard UI Kit.fig', link: '#', type: 'figma' },
-    { name: 'Engineering Wiki Home', link: '#', type: 'confluence' },
-    { name: 'Team Photos', link: '#', type: 'drive' },
-    { name: 'Icon Library.fig', link: '#', type: 'figma' },
-    { name: 'Product Roadmap 2026', link: '#', type: 'confluence' },
-    { name: 'HR Policies 2025', link: '#', type: 'drive' }
-  ]
 
   const handleModeChange = (mode) => {
-    setActiveMode(mode)
+    setActivePlatform(mode)
     setSearchQuery('')
     setSearchResults([])
     setError('')
     setPage(1)
   }
 
-  const performSearch = () => {
+  const performSearch = async () => {
     if (!searchQuery.trim()) return
     setLoading(true)
     setError('')
     setSearchResults([])
     setPage(1)
 
-    // Search using fallback data only
-    const filtered = fallbackResults.filter(r => 
-      r.name.toLowerCase().includes(searchQuery.toLowerCase())
-    )
-    const results = filtered.length > 0 ? filtered : [{ name: 'No results found for "' + searchQuery + '"', link: '#' }]
+    if (activePlatform === 'figma' || activePlatform === 'confluence') {
+        setError(`Search for ${activePlatform} is not implemented yet. Select Google Drive.`);
+        setLoading(false);
+        return;
+    }
 
-    setSearchResults(results)
-    setLoading(false)
+    try {
+        // Fetch the search results from the Apps Script endpoint
+        const response = await fetch(`${APPS_SCRIPT_URL}?endpoint=driveSearch&query=${encodeURIComponent(searchQuery)}`, { redirect: 'follow' });
+        const data = await response.json();
+
+        if (data.success) {
+            setSearchResults(data.files);
+        } else {
+            setError(data.error || 'An error occurred during search.');
+        }
+    } catch (err) {
+        setError('Network error during search. Check browser console.');
+    } finally {
+        setLoading(false);
+    }
   }
 
-  // Display results (fallback or search)
-  const currentResults = searchResults.length > 0 ? searchResults : fallbackResults
+  // Display results (only live search results now, no fallback data)
+  const currentResults = searchResults
   const start = (page - 1) * resultsPerPage
   const pageResults = currentResults.slice(start, start + resultsPerPage)
   const totalPages = Math.ceil(currentResults.length / resultsPerPage)
 
   const getPlaceholder = () => {
-    if (activeMode === 'figma') return 'Search Figma files...'
-    if (activeMode === 'confluence') return 'Search Confluence pages...'
+    if (activePlatform === 'figma') return 'Search Figma files...'
+    if (activePlatform === 'confluence') return 'Search Confluence pages...'
     return 'Search Google Drive...'
   }
+
 
   return (
     <>{/* *Resource Links Widget Block* */}
@@ -79,19 +75,19 @@ export default function ResourceLinksWidget() {
         backdropFilter: 'blur(10px)',
         WebkitBackdropFilter: 'blur(10px)',
         borderRadius: '16px',
-        padding: '19px 17px',  /* ← Reduced by 2px to match other widgets */
+        padding: '19px 17px',
         marginBottom: '28px',
         boxShadow: '0 10px 40px rgba(0,0,0,0.7)',
         border: '1px solid rgba(96,165,250,0.1)'
       }}>
         {/* *Full Row Header* */}
         <h2 style={{
-          color: '#60a5fa',  /* ← Header color – change here */
-          borderBottom: '2px solid #60a5fa',  /* ← Border color – change here */
+          color: '#60a5fa',
+          borderBottom: '2px solid #60a5fa',
           paddingBottom: '12px',
           marginBottom: '20px',
           textAlign: 'center',
-          fontSize: 'var(--header-font)'  /* ← Font size controlled by global selector */
+          fontSize: 'var(--header-font)'
         }}>
           Resource Links
         </h2>
@@ -99,11 +95,10 @@ export default function ResourceLinksWidget() {
         {/* *Two-Column Layout* */}
         <div style={{ display: 'flex', gap: '30px' }}>
           {/* *Left Column – Quick Links Box* */}
-          {/* To adjust size: Change width and minHeight below */}
           <div style={{
             flex: '0 0 auto',
-            width: '280px',        /* ← CHANGE THIS VALUE to adjust width of Quick Links box */
-            minHeight: '350px',    /* ← CHANGE THIS VALUE to adjust height of Quick Links box */
+            width: '280px',
+            minHeight: '350px',
             background: '#1e293b',
             borderRadius: '12px',
             padding: '20px',
@@ -113,15 +108,10 @@ export default function ResourceLinksWidget() {
             justifyContent: 'space-between'
           }}>
             <div>
-              {/* *Quick Links Title – 2.0rem, white* */}
-              <strong style={{ 
-                display: 'block', 
-                marginBottom: '16px', 
-                color: '#e2e8f0',      /* ← White color */
-                fontSize: '1.5rem'     /* ← Title font size – change here */
-              }}>Quick Links</strong>
+              {/* *Quick Links Title* */}
+              <strong style={{ display: 'block', marginBottom: '16px', color: '#e2e8f0', fontSize: '1.5rem' }}>Quick Links</strong>
               
-              {/* *Quick Links List – 1.5rem* */}
+              {/* *Quick Links List* */}
               <ul style={{ listStyle: 'none', padding: 0, margin: 0, lineHeight: '2.4' }}>
                 <li><a href="#" style={{ color: '#60a5fa', textDecoration: 'none', fontSize: '1.1rem' }}>TinyURL</a></li>
                 <li><a href="#" style={{ color: '#60a5fa', textDecoration: 'none', fontSize: '1.1rem' }}>Figma</a></li>
@@ -131,42 +121,36 @@ export default function ResourceLinksWidget() {
               </ul>
             </div>
             
-            {/* *View Full Resource Directory – 1.5rem, white* */}
-            <a href="#" style={{ 
-              color: '#e2e8f0',       /* ← White color */
-              fontWeight: 'normal', 
-              textAlign: 'center', 
-              marginBottom: '35px', 
-              marginTop: 'auto',
-              fontSize: '1.2rem'      /* ← Font size – change here */
-            }}>
+            {/* *View Full Resource Directory* */}
+            <a href="#" style={{ color: '#e2e8f0', fontWeight: 'normal', textAlign: 'center', marginBottom: '35px', marginTop: 'auto', fontSize: '1.2rem' }}>
               View Full Resource Directory →
             </a>
           </div>
 
+
           {/* *Right Column – Source Buttons, Search, Results* */}
           <div style={{ flex: 1 }}>
-            {/* *Source Buttons – Inactive = widget background, Active = correct colors* */}
+            {/* *Source Buttons* */}
             <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
               <button onClick={() => handleModeChange('figma')} style={{
                 flex: 1, padding: '14px', border: 'none', borderRadius: '12px',
-                background: activeMode === 'figma' ? '#d8b4fe' : 'var(--widget-bg)',  /* Pink when active */
-                color: activeMode === 'figma' ? '#1e293b' : 'white',
+                background: activePlatform === 'figma' ? '#d8b4fe' : 'var(--widget-bg)',
+                color: activePlatform === 'figma' ? '#1e293b' : 'white',
                 fontWeight: 'bold', cursor: 'pointer'
               }}>Figma</button>
               <button onClick={() => handleModeChange('confluence')} style={{
                 flex: 1, padding: '14px', border: 'none', borderRadius: '12px',
-                background: activeMode === 'confluence' ? '#14b8a6' : 'var(--widget-bg)',  /* Teal when active */
+                background: activePlatform === 'confluence' ? '#14b8a6' : 'var(--widget-bg)',
                 color: 'white', fontWeight: 'bold', cursor: 'pointer'
               }}>Confluence</button>
               <button onClick={() => handleModeChange('drive')} style={{
                 flex: 1, padding: '14px', border: 'none', borderRadius: '12px',
-                background: activeMode === 'drive' ? '#60a5fa' : 'var(--widget-bg)',  /* Light blue when active */
+                background: activePlatform === 'drive' ? '#60a5fa' : 'var(--widget-bg)',
                 color: 'white', fontWeight: 'bold', cursor: 'pointer'
               }}>Google Drive</button>
             </div>
 
-            {/* *Search Bar – Changes placeholder based on active button* */}
+            {/* *Search Bar* */}
             <input
               type="text"
               placeholder={getPlaceholder()}
@@ -174,32 +158,28 @@ export default function ResourceLinksWidget() {
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && performSearch()}
               style={{ 
-                width: '100%', 
-                padding: '14px 16px', 
-                borderRadius: '12px', 
-                border: 'none', 
-                background: '#ffffff', 
-                color: '#1e293b', 
-                fontSize: '1rem',
-                marginBottom: '20px'
+                width: '100%', padding: '14px 16px', borderRadius: '12px', border: 'none', 
+                background: '#ffffff', color: '#1e293b', fontSize: '1rem', marginBottom: '20px'
               }}
             />
 
-            {/* *Search Results Area – Shows fallback/sample data* */}
-            <div style={{ background: '#334155', borderRadius: '12px', padding: '20px', minHeight: '280px' }}>
+            {/* *Search Results Area* */}
+            <div style={{ background: '#334155', borderRadius: '12px', padding: '20px', minHeight: '280px', maxHeight: '350px', overflowY: 'auto' }}>
               {loading && <div style={{ color: '#94a3b8', textAlign: 'center' }}>Searching...</div>}
               {error && <div style={{ color: '#ef4444', marginBottom: '12px' }}>{error}</div>}
               {!loading && pageResults.length === 0 && <div style={{ color: '#94a3b8' }}>Type and press Enter to search...</div>}
               {pageResults.map((result, i) => (
-                <div key={i} style={{ padding: '10px 0', borderBottom: i < pageResults.length - 1 ? '1px solid #475569' : 'none' }}>
-                  <a href={result.link} target="_blank" rel="noopener noreferrer" style={{ color: '#60a5fa', textDecoration: 'none' }}>
+                <div key={result.id || i} style={{ padding: '10px 0', borderBottom: i < pageResults.length - 1 ? '1px solid #475569' : 'none' }}>
+                  {/* Clickable Link Implementation */}
+                  <a href={result.url} target="_blank" rel="noopener noreferrer" style={{ color: '#60a5fa', textDecoration: 'none' }}>
                     {result.name}
                   </a>
+                   <span style={{ color: '#94a3b8', fontSize: '0.8rem', marginLeft: '10px' }}>({result.type})</span>
                 </div>
               ))}
             </div>
 
-            {/* *Pagination – Shows if more than 5 results* */}
+            {/* *Pagination* */}
             {totalPages > 1 && (
               <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', marginTop: '16px' }}>
                 <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} style={{ background: '#475569', color: 'white', padding: '8px 14px', border: 'none', borderRadius: '6px' }}>
@@ -213,15 +193,6 @@ export default function ResourceLinksWidget() {
             )}
           </div>
         </div>
-
-        {/* >>> PLACEHOLDER FOR API TOKENS <<< */}
-        {/* When ready, add your real tokens above and let me know – I'll re-enable live search */}
-
-        {/* >>> DIGITAL SIGNATURE AND OWNERSHIP <<< */}
-        {/* TinyURL-Intranet-2025 © VeverlieAnneMarquez version 1.0.251219 */}
-        {/* SHA256 Hash of this exact file content: */}
-        {/* 8f7e6d5c4b3a291807f6e5d4c3b2a1908f7e6d5c4b3a291807f6e5d4c3b2a190 */}
-        {/* (This hash proves this version was created by you on December 19, 2025) */}
       </div>
     </>
   )

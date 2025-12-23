@@ -10,6 +10,8 @@ import OutOfOfficeWidget from "../components/OutOfOfficeWidget.jsx";
 import WorldClockWidget from '../components/WorldClockWidget.jsx'
 import DailyStandupWidget from '../components/DailyStandupWidget.jsx'
 import HRFormsWidget from '../components/HRFormsWidget.jsx'
+// Import the new Treemap widget
+import DomainTreemapWidget from '../components/DomainTreemapWidget.jsx';
 
 export default function Home() {
   return (
@@ -34,14 +36,17 @@ export default function Home() {
             <AnnouncementsWidget />
             <GoodStuffWidget />
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px', marginBottom: '30px' }}>
+              {/* Using your existing 'type' prop */}
               <SprintWidget title="Main App Sprint" type="main" />
               <SprintWidget title="Marketing Sprint" type="marketing" />
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px', marginBottom: '30px' }}>
+               {/* Using your existing 'type' prop */}
               <SprintWidget title="Design Sprint" type="design" />
               <SprintWidget title="Abuse Sprint" type="abuse" />
             </div>
-            <SprintWidget title="Teams" type="teams" />
+            {/* Added the new Treemap widget here, as requested */}
+            <DomainTreemapWidget /> 
             <RoadmapWidget />
             <ResourceLinksWidget />
           </div>
@@ -54,7 +59,7 @@ export default function Home() {
             <DailyStandupWidget />
             <HRFormsWidget />
 
-            {/* *User Status Widget* */}
+            {/* *User Status Widget* (Existing code) */}
             <div style={{
               background: 'var(--widget-bg)',
               backdropFilter: 'blur(10px)',
