@@ -179,9 +179,7 @@ export default function Login() {
             }}>
               <div style={{ fontWeight: 'bold', color: '#60a5fa', marginBottom: '5px' }}>Demo Credentials:</div>
               <div style={{ color: '#cbd5e1' }}>
-                <div>Admin: mitzie@tinyurl.com / Intranet123</div>
-                <div>Manager: patton@tinyurl.com / Intranet123</div>
-                <div>Viewer: gemm@tinyurl.com / Intranet123</div>
+ 
               </div>
             </div>
             
