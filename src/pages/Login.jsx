@@ -166,22 +166,7 @@ export default function Login() {
             boxShadow: '0 10px 40px rgba(0,0,0,0.8)'
           }}>
             <h2 style={{ color: '#60a5fa', marginBottom: '30px', fontSize: '2rem' }}>Welcome Back</h2>
-            
-            {/* Demo Credentials Banner */}
-            <div style={{
-              background: 'rgba(96, 165, 250, 0.1)',
-              border: '1px solid rgba(96, 165, 250, 0.3)',
-              borderRadius: '8px',
-              padding: '12px',
-              marginBottom: '20px',
-              textAlign: 'left',
-              fontSize: '0.85rem'
-            }}>
-              <div style={{ fontWeight: 'bold', color: '#60a5fa', marginBottom: '5px' }}>Demo Credentials:</div>
-              <div style={{ color: '#cbd5e1' }}>
- 
-              </div>
-            </div>
+
             
             <input
               type="email"
