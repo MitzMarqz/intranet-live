@@ -2,7 +2,7 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig({
-  base: 'intranet-live-myrepo',  // <-- Replace <repo-name> with your GitHub repository name
+  base: 'intranet-live',  // <-- Replace <repo-name> with your GitHub repository name
   plugins: [react()],
   server: {
     proxy: {
