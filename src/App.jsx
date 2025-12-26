@@ -23,13 +23,13 @@ function ProtectedRoute({ children }) {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
-        <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
-    </BrowserRouter>
+<BrowserRouter>
+  <Routes>
+    <Route path="/login" element={<Login />} />
+    <Route path="/" element={<Home />} />
+    <Route path="/settings" element={<Settings />} />
+    <Route path="*" element={<Navigate to="/" />} />
+  </Routes>
+</BrowserRouter>
   )
 }
