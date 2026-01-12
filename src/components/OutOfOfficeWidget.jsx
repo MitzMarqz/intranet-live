@@ -1,9 +1,10 @@
 /**
  * =========================================================
- * OutOfOfficeWidget
- * =========================================================
- * Data Source: Apps Script (leaves endpoint)
- * Owner: TinyURL Intranet
+ * Widget: OutOfOfficeWidget
+ * Purpose:
+ * - Approved & Pending leave viewer
+ * - Approved: today → next 14 days
+ * - Pending: all pending
  * =========================================================
  */
 
@@ -12,97 +13,103 @@ import { API_BASE_URL } from '../config/apiConfig';
 
 export default function OutOfOfficeWidget() {
   const [mode, setMode] = useState('approved');
-  const [approvedLeaves, setApprovedLeaves] = useState([]);
-  const [pendingLeaves, setPendingLeaves] = useState([]);
+  const [approved, setApproved] = useState([]);
+  const [pending, setPending] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState('');
 
-  /**
-   * =========================================================
-   * Fetch leaves
-   * =========================================================
-   */
+  /* =============================
+     Fetch data
+  ============================== */
   useEffect(() => {
-    async function fetchLeaves() {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const response = await fetch(
-          `${API_BASE_URL}/api/google?endpoint=leaves`
-        );
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch leave data');
-        }
-
-        const data = await response.json();
-
-        setApprovedLeaves(data.approved || []);
-        setPendingLeaves(data.pending || []);
-      } catch (err) {
-        console.error('OutOfOfficeWidget error:', err);
-        setError('Failed to load leave data.');
-      } finally {
-        setLoading(false);
-      }
-    }
-
     fetchLeaves();
   }, []);
 
-  /**
-   * =========================================================
-   * Render helpers
-   * =========================================================
-   */
-  function renderLeaveItem(leave, index) {
-    const fromDate = new Date(`${leave.from}T00:00:00`);
-    const toDate = new Date(`${leave.to}T00:00:00`);
+  const fetchLeaves = async () => {
+    try {
+      setLoading(true);
+      setError('');
 
-    if (isNaN(fromDate) || isNaN(toDate)) {
-      return (
-        <div key={index} style={{ marginTop: '12px' }}>
-          <strong>{leave.name}</strong>
-          <div style={{ color: 'red' }}>Invalid date</div>
-        </div>
+      const res = await fetch(
+        `${API_BASE_URL}/api/google?endpoint=leaves`
       );
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const data = await res.json();
+
+      setApproved(data.approved || []);
+      setPending(data.pending || []);
+    } catch (err) {
+      console.error('OOO fetch error:', err);
+      setError('Failed to load leave data.');
+    } finally {
+      setLoading(false);
     }
+  };
 
-    const diffDays =
-      Math.round((toDate - fromDate) / (1000 * 60 * 60 * 24)) + 1;
+  /* =============================
+     Date helpers
+  ============================== */
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
-    return (
-      <div
-        key={index}
-        style={{
-          marginTop: '12px',
-          paddingLeft: '12px',
-          borderLeft: '3px solid #60a5fa'
-        }}
-      >
-        <strong>{leave.name}</strong>
-        <div style={{ color: '#cbd5f5' }}>
-          {fromDate.toLocaleDateString()} –{' '}
-          {toDate.toLocaleDateString()} ({diffDays} days)
-        </div>
+  const plus14 = new Date(today);
+  plus14.setDate(today.getDate() + 14);
+
+  const within14Days = (from, to) => {
+    const start = new Date(from);
+    const end = new Date(to);
+    if (isNaN(start) || isNaN(end)) return false;
+    return start <= plus14 && end >= today;
+  };
+
+  const formatDate = (value) => {
+    const d = new Date(value);
+    if (isNaN(d)) return value;
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    return `${mm}-${dd}-${yyyy}`;
+  };
+
+  const approvedFiltered = approved.filter(l =>
+    within14Days(l.from, l.to)
+  );
+
+  /* =============================
+     Row renderer (FORMAT FIX)
+  ============================== */
+  const renderLeave = (leave, idx) => (
+    <div key={idx} style={{ padding: '12px 0' }}>
+      <div style={{ color: '#e2e8f0', fontWeight: '600' }}>
+        {leave.name || 'Unknown'} – {leave.leaveType || 'Leave'}
       </div>
-    );
-  }
 
-  /**
-   * =========================================================
-   * Render
-   * =========================================================
-   */
+      <div style={{ color: '#94a3b8', fontSize: '0.9rem' }}>
+        {formatDate(leave.from)} to {formatDate(leave.to)}
+      </div>
+
+      <div
+        style={{
+          borderBottom: '1px solid #334155',
+          marginTop: '12px',
+        }}
+      />
+    </div>
+  );
+
+  /* =============================
+     Render
+  ============================== */
   return (
     <div
       style={{
-        background: '#1e293b',
-        padding: '20px',
+        background: 'var(--widget-bg)',
         borderRadius: '16px',
-        boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
-        marginBottom: '28px'
+        padding: '20px',
+        marginBottom: '28px',
+        boxShadow: '0 10px 40px rgba(0,0,0,0.6)',
       }}
     >
       <h2
@@ -110,48 +117,102 @@ export default function OutOfOfficeWidget() {
           color: '#60a5fa',
           textAlign: 'center',
           borderBottom: '2px solid #60a5fa',
-          paddingBottom: '10px'
+          paddingBottom: '10px',
+          marginBottom: '16px',
         }}
       >
         Out of Office
       </h2>
 
-      {/* Tabs */}
+      {/* Toggle buttons */}
       <div
         style={{
           display: 'flex',
           justifyContent: 'center',
-          gap: '20px',
-          marginBottom: '12px'
+          gap: '12px',
+          marginBottom: '16px',
         }}
       >
-        <button onClick={() => setMode('approved')}>Approved</button>
-        <button onClick={() => setMode('pending')}>Pending</button>
+        <button
+          onClick={() => setMode('approved')}
+          style={{
+            padding: '8px 16px',
+            borderRadius: '8px',
+            border: 'none',
+            background: mode === 'approved' ? '#60a5fa' : '#334155',
+            color: 'white',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+          }}
+        >
+          Approved
+        </button>
+
+        <button
+          onClick={() => setMode('pending')}
+          style={{
+            padding: '8px 16px',
+            borderRadius: '8px',
+            border: 'none',
+            background: mode === 'pending' ? '#facc15' : '#334155',
+            color: '#1e293b',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+          }}
+        >
+          Pending
+        </button>
       </div>
 
-      {/* States */}
-      {loading && <p style={{ textAlign: 'center' }}>Loading…</p>}
-      {error && (
-        <p style={{ color: 'red', textAlign: 'center' }}>{error}</p>
+      {/* Content */}
+      {loading && (
+        <div style={{ textAlign: 'center', color: '#94a3b8' }}>
+          Loading leave records…
+        </div>
       )}
 
-      {/* Data */}
-      {!loading &&
-        !error &&
-        (mode === 'approved' ? approvedLeaves : pendingLeaves).map(
-          renderLeaveItem
-        )}
+      {error && (
+        <div style={{ color: '#ef4444', textAlign: 'center' }}>
+          {error}
+        </div>
+      )}
+
+      {!loading && !error && (
+        <div
+          style={{
+            maxHeight: '260px',
+            overflowY: 'auto',
+            background: '#0f172a',
+            borderRadius: '10px',
+            padding: '0 12px',
+          }}
+        >
+          {mode === 'approved' && approvedFiltered.length === 0 && (
+            <div style={{ padding: '16px', color: '#94a3b8' }}>
+              No approved leave in the next 14 days.
+            </div>
+          )}
+
+          {mode === 'approved' &&
+            approvedFiltered.map(renderLeave)}
+
+          {mode === 'pending' && pending.length === 0 && (
+            <div style={{ padding: '16px', color: '#94a3b8' }}>
+              No pending leave requests.
+            </div>
+          )}
+
+          {mode === 'pending' &&
+            pending.map(renderLeave)}
+        </div>
+      )}
 
       {/* =====================================================
-          WATERMARK / SIGNATURE
-          ===================================================== */}
-      <div style={{ display: 'none' }}>
- {/* TinyURL-Intranet-2025 © VeverlieAnneMarquez */}
-      {/* Version: 1.0.251224 */}
-      {/* SHA256 Hash of this exact file content: */}
-      {/* <<< GENERATE AFTER FINAL APPROVAL >>> */}      </div>
+         DIGITAL SIGNATURE AND OWNERSHIP
+      ====================================================== */}
+      {/* TinyURL-Intranet-2025 © VeverlieAnneMarquez */}
+      {/* Version: 1.0.251229 */}
+      {/* SHA256 Hash of this exact file — generate after approval */}
     </div>
   );
 }
-    
-

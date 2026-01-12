@@ -1,0 +1,16 @@
+# ================================
+# JIRA (SERVER ONLY)
+# ================================
+JIRA_BASE_URL=https://yourcompany.atlassian.net
+JIRA_EMAIL=your-email@company.com
+JIRA_API_TOKEN=YOUR_REAL_TOKEN_HERE
+
+# ================================
+# GOOGLE APPS SCRIPT
+# ================================
+APPS_SCRIPT_URL=https://script.google.com/macros/s/REAL_ID/exec
+
+# ================================
+# SERVER
+# ================================
+PORT=5175

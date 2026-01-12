@@ -5,8 +5,8 @@
  *
  * Purpose:
  * - Collect daily standup input
- * - Auto-fill submitter name from login
  * - Post plain text message to Google Chat
+ * - Keep logic simple and reliable
  *
  * =========================================================
  */
@@ -15,38 +15,25 @@ import { useState, useEffect } from 'react';
 import { API_BASE_URL } from '../config/apiConfig';
 
 export default function DailyStandupWidget() {
-  /**
-   * =========================================================
-   * State
-   * =========================================================
-   */
   const [submittedBy, setSubmittedBy] = useState('');
   const [message, setMessage] = useState('');
   const [status, setStatus] = useState('');
 
   /**
-   * =========================================================
-   * Auto-fill Name from Login
-   * =========================================================
+   * Auto-fill name from localStorage login (UNCHANGED)
    */
   useEffect(() => {
     try {
       const storedUser = JSON.parse(localStorage.getItem('currentUser'));
-
-      if (storedUser?.name) {
-        setSubmittedBy(storedUser.name);
-      } else if (storedUser?.email) {
-        setSubmittedBy(storedUser.email);
-      }
-    } catch (err) {
-      console.warn('DailyStandupWidget: Unable to read currentUser');
+      if (storedUser?.name) setSubmittedBy(storedUser.name);
+      else if (storedUser?.email) setSubmittedBy(storedUser.email);
+    } catch {
+      console.warn('Unable to read currentUser');
     }
   }, []);
 
   /**
-   * =========================================================
-   * Submit Handler
-   * =========================================================
+   * Submit to Google Chat
    */
   const submitStandup = async () => {
     if (!submittedBy.trim()) {
@@ -75,6 +62,18 @@ export default function DailyStandupWidget() {
         throw new Error('Request failed');
       }
 
+      // 🔍 AUDIT LOG: Daily standup submitted
+      fetch('/api/google?endpoint=users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'audit',
+          actor: submittedBy,
+          event: 'daily_standup_submitted'
+        })
+      }).catch(() => {}); // never block the UI
+
+
       setMessage('');
       setStatus('✅ Standup posted to Google Chat');
     } catch (err) {
@@ -83,36 +82,38 @@ export default function DailyStandupWidget() {
     }
   };
 
-  /**
-   * =========================================================
-   * Render
-   * =========================================================
-   */
   return (
     <div
       style={{
         background: 'var(--widget-bg)',
-        padding: '20px',
-        borderRadius: '16px',
-        boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
+        padding: '22px',
+        borderRadius: '18px',
         marginBottom: '28px'
       }}
     >
-      {/* *Daily Standup Widget Block* */}
-      <h2
+      {/* Header — World Clock style */}
+      <div
         style={{
-          color: '#60a5fa',
+          color: '#7aa7ff',
           textAlign: 'center',
-          borderBottom: '2px solid #60a5fa',
-          paddingBottom: '10px',
-          marginBottom: '16px',
-          fontSize: '1.5rem'
+          fontSize: '1.6rem',
+          fontWeight: 600,
+          marginBottom: '12px'
         }}
       >
         Daily Standup
-      </h2>
+      </div>
 
-      {/* *Auto-filled Submitter Name* */}
+      <div
+        style={{
+          height: '3px',
+          background: '#7aa7ff',
+          borderRadius: '2px',
+          marginBottom: '18px'
+        }}
+      />
+
+      {/* Name */}
       <input
         type="text"
         value={submittedBy}
@@ -124,12 +125,11 @@ export default function DailyStandupWidget() {
           borderRadius: '12px',
           border: 'none',
           marginBottom: '12px',
-          fontSize: '1rem',
-          opacity: 0.95
+          fontSize: '1rem'
         }}
       />
 
-      {/* *Standup Text* */}
+      {/* Message */}
       <textarea
         placeholder="Yesterday • Today • Blockers"
         value={message}
@@ -150,11 +150,11 @@ export default function DailyStandupWidget() {
         style={{
           width: '100%',
           padding: '14px',
-          background: '#60a5fa',
+          background: '#7aa7ff',
           color: '#1e293b',
           border: 'none',
           borderRadius: '12px',
-          fontWeight: 'bold',
+          fontWeight: 600,
           cursor: 'pointer'
         }}
       >
@@ -172,14 +172,6 @@ export default function DailyStandupWidget() {
           {status}
         </p>
       )}
-
-      {/* =====================================================
-         DIGITAL SIGNATURE AND OWNERSHIP
-      ====================================================== */}
-      {/* TinyURL-Intranet-2025 © VeverlieAnneMarquez */}
-      {/* Version: 1.2.251226 */}
-      {/* SHA256 Hash of this exact file content: */}
-      {/* <<< GENERATE AFTER FINAL APPROVAL >>> */}
     </div>
   );
 }

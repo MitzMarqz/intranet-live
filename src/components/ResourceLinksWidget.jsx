@@ -4,14 +4,14 @@ import { useState } from 'react'
 import { API_BASE_URL } from '../config/apiConfig' // ✅ backend-safe config
 
 export default function ResourceLinksWidget() {
-  // Renamed from activeMode to activePlatform for clarity
   const [activePlatform, setActivePlatform] = useState('drive')
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [page, setPage] = useState(1)
-  const resultsPerPage = 5
+
+  const resultsPerPage = 10
 
   const handleModeChange = (mode) => {
     setActivePlatform(mode)
@@ -21,6 +21,16 @@ export default function ResourceLinksWidget() {
     setPage(1)
   }
 
+  /**
+   * =====================================================
+   * SEARCH — BACKEND-CONNECTED (SAFE)
+   * =====================================================
+   * Calls:
+   *   GET /api/resources/search?source=drive|confluence|figma&q=...
+   * Backend returns:
+   *   { success: true, results: [{ title, url, source }] }
+   * =====================================================
+   */
   const performSearch = async () => {
     if (!searchQuery.trim()) return
 
@@ -29,23 +39,11 @@ export default function ResourceLinksWidget() {
     setSearchResults([])
     setPage(1)
 
-    if (activePlatform === 'figma' || activePlatform === 'confluence') {
-      setError(`Search for ${activePlatform} is not implemented yet. Select Google Drive.`)
-      setLoading(false)
-      return
-    }
-
     try {
-      /**
-       * =====================================================
-       * IMPORTANT CHANGE (SECURITY + ARCHITECTURE)
-       * -----------------------------------------------------
-       * OLD: Frontend → Google Apps Script (direct)
-       * NEW: Frontend → Backend → Google Apps Script
-       * =====================================================
-       */
       const response = await fetch(
-        `${API_BASE_URL}/api/google?endpoint=resources&query=${encodeURIComponent(searchQuery)}`
+        `${API_BASE_URL}/api/resources/search` +
+          `?source=${encodeURIComponent(activePlatform)}` +
+          `&q=${encodeURIComponent(searchQuery)}`
       )
 
       if (!response.ok) {
@@ -54,8 +52,15 @@ export default function ResourceLinksWidget() {
 
       const data = await response.json()
 
-      // Preserve original expected structure
-      setSearchResults(data.files || data || [])
+      // Normalize backend results to original UI shape
+      const normalized = (data.results || []).map((item, idx) => ({
+        id: idx,
+        name: item.title,
+        url: item.url,
+        type: item.source,
+      }))
+
+      setSearchResults(normalized)
     } catch (err) {
       console.error('ResourceLinksWidget search error:', err)
       setError('Network error during search. Check browser console.')
@@ -64,11 +69,10 @@ export default function ResourceLinksWidget() {
     }
   }
 
-  // Pagination logic (unchanged)
-  const currentResults = searchResults
+  // Pagination (UNCHANGED)
   const start = (page - 1) * resultsPerPage
-  const pageResults = currentResults.slice(start, start + resultsPerPage)
-  const totalPages = Math.ceil(currentResults.length / resultsPerPage)
+  const pageResults = searchResults.slice(start, start + resultsPerPage)
+  const totalPages = Math.ceil(searchResults.length / resultsPerPage)
 
   const getPlaceholder = () => {
     if (activePlatform === 'figma') return 'Search Figma files...'
@@ -153,7 +157,7 @@ export default function ResourceLinksWidget() {
             <a
               href="#"
               style={{
-                color: '#e2e8f0',
+                color: '#60a5fa',
                 textAlign: 'center',
                 marginBottom: '35px',
                 fontSize: '1.2rem',
@@ -245,11 +249,3 @@ export default function ResourceLinksWidget() {
     </>
   )
 }
-
-// =====================================================
-//      DIGITAL SIGNATURE AND OWNERSHIP
-// =====================================================
-// TinyURL-Intranet-2025 © VeverlieAnneMarquez
-// Version: 1.0.251224
-// SHA256 Hash of this exact file content:
-// <<< GENERATE AFTER FINAL APPROVAL >>>

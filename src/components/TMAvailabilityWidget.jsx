@@ -1,96 +1,142 @@
-/**
- * =========================================================
- * TMAvailabilityWidget
- * =========================================================
- * Displays team availability status
- * Data source: Google Apps Script (via backend proxy)
- *
- * UI, layout, and styles preserved
- * Only API routing updated for security
- * =========================================================
- */
-
-import { useEffect, useState } from "react";
-import { API_BASE_URL } from "../config/apiConfig";
+import { useEffect, useState } from 'react';
+import { GOOGLE_API } from '../config/apiConfig';
 
 export default function TMAvailabilityWidget() {
   const [availability, setAvailability] = useState([]);
-  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   /**
    * =========================================================
-   * Fetch Team Availability
+   * DATA FETCH — UNCHANGED (KNOWN WORKING)
    * =========================================================
+   * Uses local Google proxy with:
+   * ?endpoint=availability
    */
   useEffect(() => {
-    async function fetchAvailability() {
-      try {
-        const response = await fetch(
-          `${API_BASE_URL}/api/google?endpoint=availability`
-        );
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch availability");
-        }
-
-        const data = await response.json();
-        setAvailability(data);
-      } catch (err) {
-        console.error("TMAvailabilityWidget error:", err);
-        setError("Failed to load availability data.");
-      }
-    }
-
-    fetchAvailability();
+    fetch(`${GOOGLE_API}?endpoint=availability`)
+      .then(res => {
+        if (!res.ok) throw new Error(`Backend Error ${res.status}`);
+        return res.json();
+      })
+      .then(data => {
+        if (data.error) throw new Error(data.error);
+        setAvailability(Array.isArray(data) ? data : []);
+      })
+      .catch(err => {
+        console.error('TMAvailabilityWidget error:', err);
+        setError('❌ Failed to load availability');
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   /**
    * =========================================================
-   * Render
+   * MESSAGE → COLOR LOGIC (EXACT MATCH TO SPEC)
    * =========================================================
    */
+  function getMessageColor(message = '') {
+    if (message.includes('Available until')) return '#22c55e';      // green
+    if (message.includes('Available again at')) return '#facc15';   // yellow
+    if (message.includes('Available in')) return '#60a5fa';         // blue
+    if (message.includes('Shift starts at')) return '#60a5fa';      // blue
+    if (message.includes('On Leave')) return '#a855f7';             // purple
+    if (message.includes('Offline')) return '#94a3b8';              // gray
+    return '#94a3b8';
+  }
+
   return (
-  	<div className="widget">
-    	<h3>Team Availability</h3>
+    <div
+      style={{
+        background: '#1e293b',
+        padding: '22px',
+        borderRadius: '16px',
+        marginBottom: '28px',
+        color: '#e2e8f0'
+      }}
+    >
+      {/* ============================
+          Header (World Clock style)
+         ============================ */}
+      <div
+        style={{
+          color: '#7aa7ff',          // Header color
+          textAlign: 'center',
+          fontSize: '1.6rem',        // Title font size
+          fontWeight: 600,
+          marginBottom: '10px'
+        }}
+      >
+        TM Availability
+      </div>
 
-	    {/* Error message */}
-	    {error && (
-        <div className="error">
-        {error}
-        </div>
-    )}
+      {/* Divider — matches World Clock */}
+      <div
+        style={{
+          height: '3px',             // Divider thickness
+          background: '#7aa7ff',     // Divider color
+          borderRadius: '2px',
+          marginBottom: '18px'
+        }}
+      />
 
-    {/* Data list */}
+      {/* Loading State */}
+      {loading && (
+        <p style={{ color: '#94a3b8', textAlign: 'center' }}>
+          Syncing with Google...
+        </p>
+      )}
 
-    {/* Error */}
+      {/* Error State */}
       {error && (
-  	<div style={{ color: "red", marginTop: "8px" }}>
-    {error}
-       </div>
-	)}
+        <p style={{ color: '#ef4444', textAlign: 'center' }}>
+          {error}
+        </p>
+      )}
 
-    {/* Loading */}
-    {!error && availability.length === 0 && (
-    <div style={{ marginTop: "8px" }}>
-    Loading availability…
+      {/* Availability List */}
+      {!loading && !error && availability.map((item, idx) => (
+        <div
+          key={idx}
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '10px 0',
+            borderBottom: '1px solid #334155'
+          }}
+        >
+          {/* Nickname */}
+          <div
+            style={{
+              fontSize: '1rem',       // Nickname font size
+              fontWeight: 500,
+              color: '#e2e8f0'
+            }}
+          >
+            {item.nickname}
+          </div>
+
+          {/* Status */}
+          <div
+            style={{
+              fontSize: '1rem',     // Status font size
+              fontWeight: 500,
+              color: getMessageColor(item.message)
+            }}
+          >
+            {item.message}
+          </div>
+        </div>
+      ))}
     </div>
-)}
-
-{/* Data */}
-{!error && availability.length > 0 && (
-  <ul style={{ marginTop: "8px" }}>
-    {availability.map((person, index) => (
-      <li key={index}>
-        <strong>{person.name}</strong>: {person.status}
-      </li>
-    ))}
-  </ul>
-)}
-
-
-
-  </div>
-);
-
+  );
 }
 
+/* =====================================================
+   DIGITAL SIGNATURE AND OWNERSHIP
+===================================================== */
+/* TinyURL-Intranet-2025 © VeverlieAnneMarquez */
+/* Version: 1.1.260107 */
+/* SHA256 Hash of this exact file content: */
+/* <<< GENERATE AFTER FINAL APPROVAL >>> */

@@ -1,252 +1,312 @@
-/**
- * =========================================================
- * Block Name: SprintWidget
- * Purpose:
- * - Displays Sprint / Board issues from Jira
- * - Supports sorting, pagination, and filtering
- * - Secure: NO Jira credentials in frontend
- * - Uses backend proxy ONLY
- * =========================================================
- */
+import { useEffect, useMemo, useState } from 'react'
 
-import { useEffect, useState, useMemo } from 'react';
-import { API_BASE_URL } from '../config/apiConfig';
+/* ===================================
+ * PLACEHOLDERS — SAFE TO ADJUST LATER
+ * =================================== */
+const SUMMARY_MAX_WIDTH = 420
+const TABLE_FONT_SIZE = '0.9rem'
+const HEADER_FONT_SIZE = '1.2rem'
 
+/* COLORS */
+const WIDGET_BG = 'var(--widget-bg)'
+const WIDGET_HEADER_COLOR = '#e5e7eb'        // 👈 widget title font color
+const DIVIDER_COLOR = 'rgba(255,255,255,0.18)'
+const ROW_DIVIDER = 'rgba(255,255,255,0.08)'
+const TABLE_HEADER_BG = 'rgba(6, 172, 249, 0.85)' // 👈 table header background
+const TABLE_HEADER_TEXT = '#e5e7eb'
+const KEY_TEXT_COLOR = '#60a5fa'             // 👈 Jira key color
+
+/* LAYOUT */
+const TABLE_BODY_HEIGHT = 360                // 👈 scrollable area height
+const marginBottom = 8
+const marginTop = 0
+
+/* ===================================
+ * Helpers
+ * =================================== */
+function timeAgo(dateStr) {
+  if (!dateStr) return ''
+  const diffMs = Date.now() - new Date(dateStr).getTime()
+  const min = Math.floor(diffMs / 60000)
+  if (min < 60) return `${min}m ago`
+  const hr = Math.floor(min / 60)
+  if (hr < 24) return `${hr}h ago`
+  const day = Math.floor(hr / 24)
+  if (day < 30) return `${day}d ago`
+  const mo = Math.floor(day / 30)
+  return `${mo}mo ago`
+}
+
+function sortByKeyNumeric(a, b, dir) {
+  const na = parseInt(a.key.split('-')[1], 10)
+  const nb = parseInt(b.key.split('-')[1], 10)
+  return dir === 'asc' ? na - nb : nb - na
+}
+
+/* ===================================
+ * SprintWidget
+ * =================================== */
 export default function SprintWidget({
-  title = 'Sprint Board',
-  boardId,
-  type = 'scrum'
+  title,
+  endpoint,
+  fullWidth = true
 }) {
-  /* =============================
-     State Management
-  ============================== */
-  const [issues, setIssues] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [page, setPage] = useState(1);
+  const [issues, setIssues] = useState([])
+  const [expandedKey, setExpandedKey] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [page, setPage] = useState(1)
+  const [sort, setSort] = useState({ key: 'updated', dir: 'desc' })
 
-  const resultsPerPage = 5;
+  const PER_PAGE = 6
 
-  /* =============================
-     Sorting State
-  ============================== */
-  const [sortConfig, setSortConfig] = useState({
-    key: 'key',
-    direction: 'asc'
-  });
-
-  /* =========================================================
-     Data Fetch (SECURE)
-  ========================================================= */
+  /* ===============================
+   * Fetch
+   * =============================== */
   useEffect(() => {
-    fetchSprintIssues();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [boardId, type]);
+    let alive = true
 
-  const fetchSprintIssues = async () => {
-    setLoading(true);
-    setError('');
+    async function load() {
+      try {
+        setLoading(true)
+        const res = await fetch(endpoint)
+        const data = await res.json()
+        if (!alive) return
 
-    try {
-      const response = await fetch(
-        `${API_BASE_URL}/api/jira/issues?boardId=${boardId}&type=${type}`
-      );
-
-      if (!response.ok) {
-        throw new Error(`Server error (${response.status})`);
+        if (!data?.success) throw new Error('Failed to load sprint data')
+        setIssues(data.issues || [])
+        setError('')
+      } catch {
+        setError('Failed to load Jira data.')
+      } finally {
+        setLoading(false)
       }
-
-      const data = await response.json();
-
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to load sprint data');
-      }
-
-      setIssues(data.issues || []);
-      setPage(1);
-    } catch (err) {
-      console.error('SprintWidget fetch error:', err);
-
-      setError('⚠️ Jira unavailable — displaying SAMPLE sprint data only.');
-
-      // Fallback data is intentionally fake and for UI continuity only
-      setIssues(getSampleData(type));
-      setPage(1);
-    } finally {
-      setLoading(false);
     }
-  };
 
-  /* =========================================================
-     Sorting Logic
-  ========================================================= */
-  const handleSort = (key) => {
-    let direction = 'asc';
-    if (sortConfig.key === key && sortConfig.direction === 'asc') {
-      direction = 'desc';
-    }
-    setSortConfig({ key, direction });
-  };
+    load()
+    return () => (alive = false)
+  }, [endpoint])
 
+  /* ===============================
+   * Sorting
+   * =============================== */
   const sortedIssues = useMemo(() => {
-    let sorted = [...issues];
-
-    if (sortConfig.key) {
-      sorted.sort((a, b) => {
-        const A = a[sortConfig.key];
-        const B = b[sortConfig.key];
-
-        if (typeof A === 'number' && typeof B === 'number') {
-          return sortConfig.direction === 'asc' ? A - B : B - A;
-        }
-
-        return sortConfig.direction === 'asc'
-          ? String(A).localeCompare(String(B))
-          : String(B).localeCompare(String(A));
-      });
+    const arr = [...issues]
+    if (sort.key === 'key') {
+      return arr.sort((a, b) => sortByKeyNumeric(a, b, sort.dir))
     }
+    return arr.sort((a, b) => {
+      const A = a[sort.key] || ''
+      const B = b[sort.key] || ''
+      return sort.dir === 'asc'
+        ? String(A).localeCompare(String(B))
+        : String(B).localeCompare(String(A))
+    })
+  }, [issues, sort])
 
-    return sorted;
-  }, [issues, sortConfig]);
+  const totalPages = Math.max(1, Math.ceil(sortedIssues.length / PER_PAGE))
+  const pageItems = sortedIssues.slice(
+    (page - 1) * PER_PAGE,
+    page * PER_PAGE
+  )
 
-  /* =========================================================
-     Pagination
-  ========================================================= */
-  const start = (page - 1) * resultsPerPage;
-  const pageResults = sortedIssues.slice(start, start + resultsPerPage);
-  const totalPages = Math.ceil(sortedIssues.length / resultsPerPage);
-
-  /* =========================================================
-     Sample Data (OFFLINE / ERROR MODE)
-  ========================================================= */
-  function getSampleData(boardType) {
-    return [
-      {
-        key: 'SP-101',
-        summary: `Sample ${boardType} issue A`,
-        status: 'In Progress',
-        assignee: 'Jane Doe'
-      },
-      {
-        key: 'SP-102',
-        summary: `Sample ${boardType} issue B`,
-        status: 'To Do',
-        assignee: 'John Smith'
-      },
-      {
-        key: 'SP-103',
-        summary: `Sample ${boardType} issue C`,
-        status: 'Done',
-        assignee: 'Alex Lee'
-      }
-    ];
+  function toggleSort(key) {
+    setPage(1)
+    setSort(s =>
+      s.key === key
+        ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' }
+        : { key, dir: 'asc' }
+    )
   }
 
-  /* =========================================================
-     Render
-  ========================================================= */
+  function toggleSummary(key) {
+    setExpandedKey(k => (k === key ? null : key))
+  }
+
+  /* ===============================
+   * Render
+   * =============================== */
   return (
     <div
       style={{
-        background: 'var(--widget-bg)',
-        borderRadius: '16px',
-        padding: '20px',
-        marginBottom: '28px',
-        boxShadow: '0 10px 40px rgba(0,0,0,0.7)'
+        width: '100%',
+        gridColumn: fullWidth ? '1 / -1' : 'span 1',
+        background: WIDGET_BG,
+        borderRadius: 16,
+        padding: 22,
+        marginBottom,
+        marginTop,
+        display: 'flex',
+        flexDirection: 'column'
       }}
     >
-      <h2
+      {/* Widget Header */}
+      <div
         style={{
-          color: '#60a5fa',
-          borderBottom: '2px solid #60a5fa',
-          paddingBottom: '12px',
-          marginBottom: '16px',
-          textAlign: 'center'
+          fontSize: HEADER_FONT_SIZE,
+          marginBottom: 12,
+          fontWeight: 600,
+          color: WIDGET_HEADER_COLOR
         }}
       >
         {title}
-      </h2>
+      </div>
 
-      {loading && (
-        <div style={{ textAlign: 'center', color: '#94a3b8' }}>
-          Loading sprint data…
-        </div>
-      )}
+      <div
+        style={{
+          height: 2,
+          background: DIVIDER_COLOR,
+          marginBottom: 14
+        }}
+      />
+
+      {loading && <div>Loading…</div>}
 
       {error && (
         <div
           style={{
             background: '#ef4444',
             color: 'white',
-            padding: '12px',
-            borderRadius: '8px',
-            marginBottom: '12px'
+            padding: 12,
+            borderRadius: 10,
+            marginBottom: 12,
+            textAlign: 'center'
           }}
         >
           {error}
         </div>
       )}
 
-      {!loading && pageResults.length > 0 && (
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr>
-              {['key', 'summary', 'status', 'assignee'].map((col) => (
-                <th
-                  key={col}
-                  onClick={() => handleSort(col)}
-                  style={{
-                    cursor: 'pointer',
-                    padding: '12px',
-                    background: 'var(--tinyurl-blue)',
-                    color: 'white'
-                  }}
-                >
-                  {col.toUpperCase()}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {pageResults.map((item) => (
-              <tr key={item.key}>
-                <td style={{ padding: '12px', color: '#60a5fa' }}>
-                  {item.key}
-                </td>
-                <td style={{ padding: '12px' }}>{item.summary}</td>
-                <td style={{ padding: '12px' }}>{item.status}</td>
-                <td style={{ padding: '12px' }}>{item.assignee}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {!loading && !error && (
+        <>
+          {/* Scrollable Table Area */}
+          <div
+            style={{
+              overflowY: 'auto',
+              maxHeight: TABLE_BODY_HEIGHT
+            }}
+          >
+            <table
+              style={{
+                width: '100%',
+                fontSize: TABLE_FONT_SIZE,
+                borderCollapse: 'collapse'
+              }}
+            >
+              <thead
+                style={{
+                  position: 'sticky',
+                  top: 0,
+                  background: TABLE_HEADER_BG,
+                  color: TABLE_HEADER_TEXT,
+                  zIndex: 1
+                }}
+              >
+                <tr>
+                  <th style={{ padding: '14px 10px' }} onClick={() => toggleSort('key')}>Key</th>
+                  <th style={{ padding: '14px 10px' }}>Summary</th>
+                  <th style={{ padding: '14px 10px' }} onClick={() => toggleSort('assignee')}>Assigned</th>
+                  <th style={{ padding: '14px 10px' }} onClick={() => toggleSort('status')}>Status</th>
+                  <th style={{ padding: '14px 10px' }} onClick={() => toggleSort('updated')}>Updated</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {pageItems.map(i => {
+                  const expanded = expandedKey === i.key
+
+                  return (
+                    <tr
+                      key={i.key}
+                      style={{
+                        borderBottom: `1px solid ${ROW_DIVIDER}`,
+                        height: expanded ? 'auto' : 64
+                      }}
+                    >
+                      {/* Key */}
+                      <td style={{ padding: '12px 10px', color: KEY_TEXT_COLOR }}>
+                        <a
+                          href={i.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{ color: KEY_TEXT_COLOR }}
+                        >
+                          {i.key}
+                        </a>
+                      </td>
+
+                      {/* Summary */}
+                      <td
+                        style={{
+                          maxWidth: SUMMARY_MAX_WIDTH,
+                          padding: '12px 10px',
+                          verticalAlign: 'top',
+                          cursor: 'pointer'
+                        }}
+                        title={i.summary}
+                        onClick={() => toggleSummary(i.key)}
+                      >
+                        <div
+                          style={{
+                            whiteSpace: 'normal',
+                            display: expanded ? 'block' : '-webkit-box',
+                            WebkitLineClamp: expanded ? 'unset' : 2,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden',
+                            lineHeight: '1.45em'
+                          }}
+                        >
+                          {i.summary}
+                        </div>
+                      </td>
+
+                      <td style={{ padding: '12px 10px' }}>
+                        {i.assignee || '—'}
+                      </td>
+
+                      <td style={{ padding: '12px 10px', textAlign: 'center' }}>
+                        {i.status}
+                      </td>
+
+                      <td style={{ padding: '12px 10px', opacity: 0.7 }}>
+                        {timeAgo(i.updated)}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Fixed Pagination */}
+          <div
+            style={{
+              marginTop: 14,
+              paddingTop: 10,
+              borderTop: `1px solid ${ROW_DIVIDER}`,
+              textAlign: 'center'
+            }}
+          >
+            <button
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1}
+            >
+              Prev
+            </button>
+
+            <span style={{ margin: '0 12px' }}>
+              Page {page} / {totalPages}
+            </span>
+
+            <button
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+            >
+              Next
+            </button>
+          </div>
+        </>
       )}
-
-      {totalPages > 1 && (
-        <div style={{ textAlign: 'center', marginTop: '16px' }}>
-          <button onClick={() => setPage(p => Math.max(1, p - 1))}>
-            Prev
-          </button>
-
-          <span style={{ margin: '0 12px' }}>
-            Page {page} of {totalPages}
-          </span>
-
-          <button onClick={() => setPage(p => Math.min(totalPages, p + 1))}>
-            Next
-          </button>
-        </div>
-      )}
-
-      {/* =====================================================
-          DIGITAL SIGNATURE AND OWNERSHIP
-      ====================================================== */}
-      <div style={{ display: 'none' }}>
-        {/* TinyURL-Intranet-2025 © VeverlieAnneMarquez */}
-        {/* Version: 1.0.251224 */}
-        {/* SHA256 Hash of this exact file content: */}
-        {/* <<< GENERATE AFTER FINAL APPROVAL >>> */}
-      </div>
     </div>
-  );
+  )
 }

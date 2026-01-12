@@ -10,14 +10,14 @@ import OutOfOfficeWidget from "../components/OutOfOfficeWidget.jsx";
 import WorldClockWidget from '../components/WorldClockWidget.jsx'
 import DailyStandupWidget from '../components/DailyStandupWidget.jsx'
 import HRFormsWidget from '../components/HRFormsWidget.jsx'
-// Import the new Treemap widget
-import DomainTreemapWidget from '../components/DomainTreemapWidget.jsx';
+
 
 export default function Home() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', position: 'relative' }}>
       {/* *Neon Glass Background Block* */}
       <div className="glass-bg">
+        <div className="blob pink-blob"></div>
         <div className="blob blue-blob"></div>
         <div className="blob purple-blob"></div>
       </div>
@@ -35,18 +35,48 @@ export default function Home() {
           <div style={{ flex: 2 }}>
             <AnnouncementsWidget />
             <GoodStuffWidget />
+            
+            {/* ==============================
+            {/* sprint scrum and kanban widgets */}
+            {/* ============================== */}
+
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px', marginBottom: '30px' }}>
-              {/* Using your existing 'type' prop */}
-              <SprintWidget title="Main App Sprint" type="main" />
-              <SprintWidget title="Marketing Sprint" type="marketing" />
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px', marginBottom: '30px' }}>
-               {/* Using your existing 'type' prop */}
-              <SprintWidget title="Design Sprint" type="design" />
-              <SprintWidget title="Abuse Sprint" type="abuse" />
-            </div>
+              <SprintWidget
+              title="Main App Sprint"
+              endpoint="/api/jira/sprint/main"
+              fullWidth={false}
+              />
+              
+              <SprintWidget
+              title="Marketing Sprint"
+              endpoint="/api/jira/sprint/marketing"
+              fullWidth={false}
+              />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px', marginBottom: '30px' }}>
+                <SprintWidget
+                title="Design"
+                endpoint="/api/jira/kanban/design"
+                fullWidth={false}
+                />
+                <SprintWidget
+                title="Abuse"
+                endpoint="/api/jira/kanban/abuse"
+                fullWidth={false}
+                />
+                </div>
+
+              {/* Teams — full width */}
+              <SprintWidget
+              title="Teams"
+              endpoint="/api/jira/kanban/teams"
+              fullWidth
+              height={320} // 🔧 PLACEHOLDER: adjust Teams widget height here
+/>
+
+
             {/* Added the new Treemap widget here, as requested */}
-            <DomainTreemapWidget /> 
+            {/* <DomainTreemapWidget />  */}
             <RoadmapWidget />
             <ResourceLinksWidget />
           </div>
@@ -59,7 +89,7 @@ export default function Home() {
             <DailyStandupWidget />
             <HRFormsWidget />
 
-            {/* *User Status Widget* (Existing code) */}
+            *User Status Widget* (Existing code)
             <div style={{
               background: 'var(--widget-bg)',
               backdropFilter: 'blur(10px)',

@@ -1,17 +1,22 @@
 /**
- * ============================================================
- * Google Chat Proxy — Daily Standup (Plain Message)
- * ============================================================
+ * =========================================================
+ * File: chatProxy.js
+ * =========================================================
  *
  * Purpose:
- * - Accept Daily Standup submissions from frontend
- * - Post a simple text message to Google Chat Space
- * - NO mentions
- * - NO cards
- * - NO annotations
- * - NO frontend secrets
+ * - Accept POST requests from frontend
+ * - Forward messages to Google Chat via Incoming Webhook
  *
- * ============================================================
+ * Endpoint:
+ * POST /api/chat/standup
+ *
+ * Expected body:
+ * {
+ *   submittedBy: string,
+ *   message: string
+ * }
+ *
+ * =========================================================
  */
 
 import express from 'express';
@@ -20,79 +25,38 @@ import fetch from 'node-fetch';
 const router = express.Router();
 
 /**
- * ============================================================
- * ENV (LOCKED VARIABLE NAME)
- * ============================================================
+ * IMPORTANT:
+ * - This reads directly from process.env
+ * - dotenv MUST be loaded in index.js BEFORE this file is imported
  */
-const CHAT_WEBHOOK_URL = process.env.GOOGLE_CHAT_WEBHOOK;
+const GOOGLE_CHAT_WEBHOOK_URL = process.env.GOOGLE_CHAT_WEBHOOK_URL;
 
-if (!CHAT_WEBHOOK_URL) {
-  console.error('❌ GOOGLE_CHAT_WEBHOOK is missing in .env');
-}
-
-/**
- * ============================================================
- * Health Check
- * ============================================================
- */
-router.get('/health', (req, res) => {
-  res.json({ ok: true, service: 'chat-proxy' });
-});
-
-/**
- * ============================================================
- * POST /api/chat/standup
- * ============================================================
- */
 router.post('/standup', async (req, res) => {
+  console.log('Webhook URL:', process.env.GOOGLE_CHAT_WEBHOOK_URL ? 'FOUND' : 'MISSING');
   try {
+    const { submittedBy, message } = req.body;
 
-    const { message, submittedBy } = req.body;
-
-
-    if (!message || !message.trim()) {
-      return res.status(400).json({ error: 'Missing standup message' });
+    if (!submittedBy || !message) {
+      return res.status(400).json({ success: false, error: 'Invalid payload' });
     }
 
-    if (!CHAT_WEBHOOK_URL) {
-      return res.status(500).json({ error: 'Chat webhook not configured' });
+    if (!GOOGLE_CHAT_WEBHOOK_URL) {
+      throw new Error('GOOGLE_CHAT_WEBHOOK_URL is missing');
     }
 
-
-     const payload = {
-  	text: `🧍 Daily Standup\nSubmitted by: ${submittedBy}\n\n${message}`
-    };
-
-
-    const response = await fetch(CHAT_WEBHOOK_URL, {
+    await fetch(GOOGLE_CHAT_WEBHOOK_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: JSON.stringify({
+        text: `${submittedBy}\n\n${message}`
+      })
     });
 
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error('❌ Google Chat API error:', errText);
-      return res.status(500).json({ error: 'Failed to post standup to Chat' });
-    }
-
     res.json({ success: true });
-
   } catch (err) {
-    console.error('❌ Chat standup error:', err);
-    res.status(500).json({ error: 'Chat proxy failure' });
+    console.error('chatProxy error:', err.message);
+    res.status(500).json({ success: false });
   }
 });
 
 export default router;
-
-/**
- * ============================================================
- * DIGITAL SIGNATURE AND OWNERSHIP
- * ============================================================
- * TinyURL-Intranet-2025 © VeverlieAnneMarquez
- * Version: 1.0.251225
- * SHA256 Hash of this exact file content:
- * <<< GENERATE AFTER FINAL APPROVAL >>>
- * ============================================================
- */
